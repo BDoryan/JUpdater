@@ -8,6 +8,7 @@ public class JUpdater {
         System.out.println("[JUpdater] "+message);
     }
 
+    private int bufferLength = 8;
     private File base;
     private String version;
 
@@ -18,6 +19,14 @@ public class JUpdater {
 
     public int countFiles(){
         return countFiles(base);
+    }
+
+    public int getBufferLength() {
+        return bufferLength;
+    }
+
+    public void setBufferLength(int bufferLength) {
+        this.bufferLength = bufferLength;
     }
 
     public int countFiles(File directory){

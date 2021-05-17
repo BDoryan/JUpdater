@@ -1,12 +1,13 @@
 package doryanbessiere.jupdater.fr.server.remoteclient;
 
 import doryanbessiere.jupdater.fr.JUpdater;
+import doryanbessiere.jupdater.fr.network.Network;
 import doryanbessiere.jupdater.fr.server.JUpdaterServer;
 
 import java.io.*;
 import java.net.Socket;
 
-public class JUpdaterRemoteClient {
+public class JUpdaterRemoteClient extends Thread {
 
     private JUpdaterServer server;
     private Socket socket;
@@ -16,6 +17,16 @@ public class JUpdaterRemoteClient {
         this.socket = socket;
     }
 
+    @Override
+    public void run() {
+        super.run();
+        try {
+            accept();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private DataInputStream dataInputStream = null;
     private DataOutputStream dataOutputStream = null;
 
@@ -23,10 +34,18 @@ public class JUpdaterRemoteClient {
         dataInputStream = new DataInputStream(socket.getInputStream());
         dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
-        dataOutputStream.writeInt(server.getJUpdater().countFiles());
-        dataOutputStream.flush();
+        if(!dataInputStream.readUTF().equalsIgnoreCase(server.getJUpdater().getVersion())){
+            dataOutputStream.writeInt(Network.NEED_UPDATE);
+            dataOutputStream.flush();
 
-        sendDirectory(server.getJUpdater().getBase());
+            dataOutputStream.writeInt(server.getJUpdater().countFiles());
+            dataOutputStream.flush();
+
+            sendDirectory(server.getJUpdater().getBase());
+        } else {
+            dataOutputStream.writeInt(Network.VERSION_OK);
+        }
+        JUpdater.log("Socket ("+socket.getInetAddress().getHostAddress()+":"+socket.getPort()+") kicked !");
     }
 
     public void sendDirectory(File directory){
@@ -54,7 +73,7 @@ public class JUpdaterRemoteClient {
             FileInputStream fileInputStream = new FileInputStream(file);
             OutputStream outputStream = socket.getOutputStream();
 
-            int buffer_size = 8;
+            int buffer_size = server.getJUpdater().getBufferLength();
 
             while(true){
                 int size = buffer_size;

@@ -27,7 +27,7 @@ public class JUpdaterServer {
             while(!serverSocket.isClosed()){
                 Socket socket = serverSocket.accept();
                 JUpdaterRemoteClient remoteClient = new JUpdaterRemoteClient(this, socket);
-                remoteClient.accept();
+                remoteClient.start();
                 JUpdater.log("Client connected : "+socket.getInetAddress().getHostAddress()+":"+socket.getPort());
 
             }

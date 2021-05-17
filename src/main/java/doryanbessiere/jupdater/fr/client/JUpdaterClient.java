@@ -1,9 +1,12 @@
 package doryanbessiere.jupdater.fr.client;
 
 import doryanbessiere.jupdater.fr.JUpdater;
+import doryanbessiere.jupdater.fr.listeners.JUpdaterClientTrafic;
+import doryanbessiere.jupdater.fr.network.Network;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class JUpdaterClient {
 
@@ -17,6 +20,12 @@ public class JUpdaterClient {
     private DataInputStream dataInputStream = null;
     private DataOutputStream dataOutputStream = null;
 
+    private ArrayList<JUpdaterClientTrafic> traficListeners = new ArrayList<>();
+
+    public ArrayList<JUpdaterClientTrafic> getTraficListeners() {
+        return traficListeners;
+    }
+
     public void connect(String address, int port){
         try {
             this.socket = new Socket(address, port);
@@ -25,8 +34,18 @@ public class JUpdaterClient {
             dataInputStream = new DataInputStream(socket.getInputStream());
             dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
-            int count_files = dataInputStream.readInt();
-            receiveFiles(count_files);
+            dataOutputStream.writeUTF(jupdater.getVersion());
+            dataOutputStream.flush();
+
+            if(dataInputStream.readInt() == Network.NEED_UPDATE){
+                int count_files = dataInputStream.readInt();
+                traficListeners.forEach(listener -> listener.updateStart(count_files));
+                receiveFiles(count_files);
+                traficListeners.forEach(listener -> listener.updateFinish());
+            } else {
+                JUpdater.log("Update not required ! Disconnect.");
+                socket.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -42,6 +61,9 @@ public class JUpdaterClient {
             JUpdater.log("Download start (path="+path+", length"+length+", ("+ (i + 1)+"/"+count_files+")");
 
             File file = new File(jupdater.getBase(), path);
+
+            int finalI = i;
+            traficListeners.forEach(listener -> listener.downloadStart(file, (finalI + 1), count_files));
             if(!file.getParentFile().exists()){
                 file.getParentFile().mkdirs();
             } else {
@@ -53,7 +75,7 @@ public class JUpdaterClient {
 
             FileOutputStream fileOutputStream = new FileOutputStream(file);
 
-            int buffer_size = 8;
+            int buffer_size = jupdater.getBufferLength();
 
             while(true){
                 int size = buffer_size;
@@ -70,11 +92,13 @@ public class JUpdaterClient {
                 }
                 fileOutputStream.write(buffer, 0, buffer.length);
                 fileOutputStream.flush();
+                traficListeners.forEach(listener -> listener.download(file, path, file.length(), length, (finalI + 1), count_files));
 
                 JUpdater.log("Downloading : "+path+" ("+((long) file.length())+"/"+(length)+", "+(100 * (long) file.length() / length)+"%)");
                 if(finish)
                     break;
             }
+            traficListeners.forEach(listener -> listener.downloadFinish(file));
             JUpdater.log("Download finish.");
             fileOutputStream.close();
         }
