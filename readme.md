@@ -1,7 +1,7 @@
 ## JUpdater
 Projet de dépendance ayant pour but de mettre à jour mes logiciels 
 
-###Fonctionnement du projet
+### Fonctionnement du projet
 - Serveur de mise à jour
 - Client qui permet de vérifier si une mise à jour est disponible et de la télécharger
 
