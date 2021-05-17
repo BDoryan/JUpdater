@@ -4,28 +4,32 @@ import java.io.File;
 
 public class JUpdater {
 
+    public static void log(String message){
+        System.out.println("[JUpdater] "+message);
+    }
+
     private File base;
     private String version;
-    private String[] ignored;
 
     public JUpdater(File base, String version) {
         this.base = base;
         this.version = version;
     }
 
-    public String[] getIgnored() {
-        return ignored;
+    public int countFiles(){
+        return countFiles(base);
     }
 
-    /**
-     *
-     * Permet de définir les fichiers à ignorés lors des sauvegardes de sécurité
-     * (pour éviter la perte de fichier lors d'une MAJ).
-     *
-     * @param ignored
-     */
-    public void setIgnored(String... ignored) {
-        this.ignored = ignored;
+    public int countFiles(File directory){
+        int count = 0;
+        for(File file : directory.listFiles()){
+            if(file.isDirectory()){
+                count += countFiles(file);
+            } else {
+                count++;
+            }
+        }
+        return count;
     }
 
     public File getBase() {
@@ -35,5 +39,4 @@ public class JUpdater {
     public String getVersion() {
         return version;
     }
-
 }
