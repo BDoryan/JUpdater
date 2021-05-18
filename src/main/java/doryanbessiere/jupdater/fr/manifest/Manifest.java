@@ -2,6 +2,7 @@ package doryanbessiere.jupdater.fr.manifest;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import doryanbessiere.jupdater.fr.serials.ManifestObject;
 import org.apache.commons.io.FileUtils;
 
 import java.io.*;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 
 public class Manifest {
 
-    private static final Gson GSON = new GsonBuilder().create();
+    public static final Gson GSON = new GsonBuilder().create();
 
     private String filePath;
     private String version;
@@ -121,11 +122,13 @@ public class Manifest {
             FileUtils.cleanDirectory(base_directory);
             debug("Removal of the old version.");
             FileUtils.copyDirectory(new_base_directory, base_directory);
+            FileUtils.cleanDirectory(new_base_directory);
             debug("Copy of the new version.");
+
+            this.version = version;
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return true;
     }
 
@@ -138,18 +141,6 @@ public class Manifest {
                 files.add(file);
         }
         return files;
-    }
-
-    public String getFilePath() {
-        return filePath;
-    }
-
-    public File getFile(){
-        return new File(filePath);
-    }
-
-    public String getVersion() {
-        return version;
     }
 
     public ArrayList<ManifestFile> getFiles() {
@@ -170,6 +161,79 @@ public class Manifest {
             }
         }
         return null;
+    }
+
+    public ArrayList<String> compare(ManifestObject manifestObject) {
+        ArrayList<String> updates = new ArrayList<>();
+        /**
+         * Analyse des fichiers nouveau ou modifier
+         */
+        for(ManifestFile serverManifestFile : files){
+            ManifestFile found = null;
+            for(ManifestFile clientManifestFile : manifestObject.getFiles()){
+                debug("Check SERVER["+serverManifestFile.toString()+"] -> CLIENT["+clientManifestFile.toString()+"]");
+                if(serverManifestFile.equalsPath(clientManifestFile)){
+                    found = clientManifestFile;
+                    break;
+                }
+            }
+
+            /**
+             * Fichier détecté, vérication voir si celui-ci est ancien
+             */
+            if(found != null){
+                debug(found.getPath()+" : Check if need update to this ManifestFile");
+                if(!serverManifestFile.getVersion().equals(found.getVersion())){
+                    updates.add(serverManifestFile.getPath());
+                    found.setVersion(version);
+                }
+            } else {
+                /**
+                 * Fichier non trouver, donc ajout de celui-ci
+                 */
+                debug(serverManifestFile.getPath()+" : new ManifestFile");
+                updates.add(serverManifestFile.getPath());
+                manifestObject.getFiles().add(serverManifestFile);
+            }
+        }
+
+        /**
+         * Analyse des fichiers supprimées
+         */
+        ArrayList<ManifestFile> copy = new ArrayList<>();
+        copy.addAll(manifestObject.getFiles());
+        for(ManifestFile clientManifestFile : copy){
+            ManifestFile found = null;
+            for(ManifestFile serverManifestFile : files){
+                if(serverManifestFile.equalsPath(clientManifestFile)){
+                    found = serverManifestFile;
+                }
+            }
+            if(found == null){
+                manifestObject.getFiles().remove(clientManifestFile);
+            }
+        }
+        return updates;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public File getFile(){
+        return new File(filePath);
+    }
+
+    public void setFiles(ArrayList<ManifestFile> files) {
+        this.files = files;
+    }
+
+    public String getVersion() {
+        return version;
     }
 
     public static boolean debug = false;

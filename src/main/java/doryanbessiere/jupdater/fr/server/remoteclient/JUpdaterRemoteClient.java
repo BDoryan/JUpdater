@@ -1,11 +1,14 @@
 package doryanbessiere.jupdater.fr.server.remoteclient;
 
 import doryanbessiere.jupdater.fr.JUpdater;
+import doryanbessiere.jupdater.fr.manifest.Manifest;
 import doryanbessiere.jupdater.fr.network.Network;
+import doryanbessiere.jupdater.fr.serials.ManifestObject;
 import doryanbessiere.jupdater.fr.server.JUpdaterServer;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class JUpdaterRemoteClient extends Thread {
 
@@ -21,8 +24,9 @@ public class JUpdaterRemoteClient extends Thread {
     public void run() {
         super.run();
         try {
+            JUpdater.log("Client connected : "+socket.getInetAddress().getHostAddress()+":"+socket.getPort());
             accept();
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
@@ -30,22 +34,50 @@ public class JUpdaterRemoteClient extends Thread {
     private DataInputStream dataInputStream = null;
     private DataOutputStream dataOutputStream = null;
 
-    public void accept() throws IOException {
+    public void accept() throws IOException, ClassNotFoundException {
         dataInputStream = new DataInputStream(socket.getInputStream());
         dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
+        JUpdater.log("Waiting for the client's version");
         if(!dataInputStream.readUTF().equalsIgnoreCase(server.getJUpdater().getVersion())){
             dataOutputStream.writeInt(Network.NEED_UPDATE);
             dataOutputStream.flush();
 
-            dataOutputStream.writeInt(server.getJUpdater().countFiles());
-            dataOutputStream.flush();
+            JUpdater.log("Waiting for the client's manifest file");
+            ManifestObject manifestObject = ManifestObject.fromJson(dataInputStream.readUTF());
 
-            sendDirectory(server.getJUpdater().getBase());
+            sendUpdate(manifestObject);
+            socket.close();
         } else {
             dataOutputStream.writeInt(Network.VERSION_OK);
         }
         JUpdater.log("Socket ("+socket.getInetAddress().getHostAddress()+":"+socket.getPort()+") kicked !");
+    }
+
+    public void sendUpdate(ManifestObject manifestObject) throws IOException {
+        Manifest serverManifest = server.getJUpdater().getManifest();
+        ArrayList<String> paths = serverManifest.compare(manifestObject);
+
+        JUpdater.log("File recovery, start checking for out-of-date files");
+        dataOutputStream.writeInt(paths.size());
+        dataOutputStream.flush();
+        JUpdater.log("The client has "+paths.size()+" files to update");
+
+        ArrayList<File> files = new ArrayList<>();
+        for(String path : paths){
+            File file = new File(server.getJUpdater().getBase(), path);
+            files.add(file);
+        }
+
+        JUpdater.log("Sending updated files...");
+        sendFiles(files);
+
+        JUpdater.log("Sending the updated manifest file");
+        manifestObject.setVersion(server.getJUpdater().getVersion());
+
+        dataOutputStream.writeUTF(manifestObject.toJson());
+        dataOutputStream.flush();
+        JUpdater.log("Update completed, good bye!");
     }
 
     public void sendDirectory(File directory){
@@ -57,6 +89,10 @@ public class JUpdaterRemoteClient extends Thread {
                 sendFile(file);
             }
         }
+    }
+
+    public void sendFiles(ArrayList<File> files){
+        files.forEach(file -> sendFile(file));
     }
 
     public void sendFile(File file){

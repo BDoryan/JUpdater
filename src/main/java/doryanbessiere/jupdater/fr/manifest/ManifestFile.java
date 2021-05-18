@@ -1,6 +1,7 @@
 package doryanbessiere.jupdater.fr.manifest;
 
 import java.io.File;
+import java.util.Objects;
 
 public class ManifestFile {
 
@@ -20,11 +21,19 @@ public class ManifestFile {
         return version;
     }
 
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
     @Override
     public String toString() {
         return "ManifestFile{" +
                 "path='" + path + '\'' +
                 ", version='" + version + '\'' +
                 '}';
+    }
+
+    public boolean equalsPath(ManifestFile file){
+        return file.getPath().equals(this.path);
     }
 }

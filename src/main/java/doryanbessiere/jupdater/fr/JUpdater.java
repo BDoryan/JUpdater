@@ -1,5 +1,8 @@
 package doryanbessiere.jupdater.fr;
 
+import doryanbessiere.jupdater.fr.manifest.Manifest;
+import doryanbessiere.jupdater.fr.manifest.ManifestFile;
+
 import java.io.File;
 
 public class JUpdater {
@@ -11,10 +14,16 @@ public class JUpdater {
     private int bufferLength = 8;
     private File base;
     private String version;
+    private Manifest manifest;
 
-    public JUpdater(File base, String version) {
+    public JUpdater(File base, String version,Manifest manifest) {
         this.base = base;
         this.version = version;
+        this.manifest = manifest;
+    }
+
+    public Manifest getManifest() {
+        return manifest;
     }
 
     public int countFiles(){

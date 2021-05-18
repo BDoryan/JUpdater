@@ -10,13 +10,17 @@ import java.io.IOException;
 public class Server {
 
     public static void main(String[] args) {
-        JUpdater jupdater = new JUpdater(new File("C:\\Users\\Doryan\\Documents\\Pétanque Manager\\JUpdaterServer\\base"), "1.0.0");
-        makeUpdate(jupdater.getVersion());
+        String version = "1.0.5";
+        Manifest manifest = getManifest(version);
+        if(manifest == null)
+            return;
+
+        JUpdater jupdater = new JUpdater(new File("C:\\Users\\Doryan\\Documents\\Pétanque Manager\\JUpdaterServer\\base"), version, manifest);
         JUpdaterServer server = new JUpdaterServer(jupdater, 222);
         server.start();
     }
 
-    private static void makeUpdate(String version){
+    private static Manifest getManifest(String version){
         File directory = new File("C:\\Users\\Doryan\\Documents\\Pétanque Manager\\JUpdaterServer");
         File base = new File(directory, "base");
         File new_version = new File(directory, "new");
@@ -24,7 +28,7 @@ public class Server {
         File manifestFile = new File(directory, "manifest.json");
 
         if(!base.exists())
-            return;
+            return null;
 
         if(!backup_directory.exists())
             backup_directory.mkdirs();
@@ -49,6 +53,9 @@ public class Server {
             }
         } else  {
             manifest = Manifest.readManifest(manifestFile);
+            if(new_version.listFiles().length <= 0)
+                return manifest;
+
             try {
                 if(manifest.updateFiles(backup_directory, base, new_version, version)){
                     System.out.println("Update success!");
@@ -60,5 +67,6 @@ public class Server {
                 e.printStackTrace();
             }
         }
+        return manifest;
     }
 }

@@ -2,7 +2,10 @@ package doryanbessiere.jupdater.fr.client;
 
 import doryanbessiere.jupdater.fr.JUpdater;
 import doryanbessiere.jupdater.fr.listeners.JUpdaterClientTrafic;
+import doryanbessiere.jupdater.fr.manifest.Manifest;
+import doryanbessiere.jupdater.fr.manifest.ManifestFile;
 import doryanbessiere.jupdater.fr.network.Network;
+import doryanbessiere.jupdater.fr.serials.ManifestObject;
 
 import java.io.*;
 import java.net.Socket;
@@ -34,16 +37,50 @@ public class JUpdaterClient {
             dataInputStream = new DataInputStream(socket.getInputStream());
             dataOutputStream = new DataOutputStream(socket.getOutputStream());
 
+            JUpdater.log("Sending the customer's version.");
             dataOutputStream.writeUTF(jupdater.getVersion());
             dataOutputStream.flush();
 
+            JUpdater.log("Waiting for server response...");
             if(dataInputStream.readInt() == Network.NEED_UPDATE){
+                JUpdater.log("Update required, send your manifest file.");
+                Manifest manifest = jupdater.getManifest();
+
+                dataOutputStream.writeUTF(new ManifestObject(manifest).toJson());
+                dataOutputStream.flush();
+
                 int count_files = dataInputStream.readInt();
+                JUpdater.log("You have "+count_files+" files to update.");
                 traficListeners.forEach(listener -> listener.updateStart(count_files));
+
+                JUpdater.log("Receiving files....");
                 receiveFiles(count_files);
+                JUpdater.log("Recovery complete, update manifest file");
+
+                ManifestObject manifestObject = ManifestObject.fromJson(dataInputStream.readUTF());
+
+                for(ManifestFile manifestFile : manifest.getFiles()){
+                    boolean found = false;
+                    for(ManifestFile newManifestFile : manifestObject.getFiles()){
+                        if(manifestFile.equalsPath(newManifestFile)){
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(!found){
+                        File file = new File(jupdater.getBase(), manifestFile.getPath());
+                        if(file.exists())
+                            file.delete();
+                    }
+                }
+                manifest.setFiles(manifestObject.getFiles());
+                manifest.setVersion(manifestObject.getVersion());
+                manifest.save();
+                JUpdater.log("Update completed");
+
                 traficListeners.forEach(listener -> listener.updateFinish());
             } else {
-                JUpdater.log("Update not required ! Disconnect.");
+                JUpdater.log("You are already up to date! Good bye.");
                 socket.close();
             }
         } catch (IOException e) {
@@ -58,7 +95,7 @@ public class JUpdaterClient {
         for(int i = 0;i < count_files; i++){
             String path = dataInputStream.readUTF();
             long length = dataInputStream.readLong();
-            JUpdater.log("Download start (path="+path+", length"+length+", ("+ (i + 1)+"/"+count_files+")");
+            JUpdater.log("Download start (path="+path+", length="+length+") ("+ (i + 1)+"/"+count_files+")");
 
             File file = new File(jupdater.getBase(), path);
 
