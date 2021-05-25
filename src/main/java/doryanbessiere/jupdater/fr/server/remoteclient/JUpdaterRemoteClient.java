@@ -13,11 +13,18 @@ import java.util.ArrayList;
 public class JUpdaterRemoteClient extends Thread {
 
     private JUpdaterServer server;
+
     private Socket socket;
+    private Network network;
 
     public JUpdaterRemoteClient(JUpdaterServer server, Socket socket) {
         this.server = server;
         this.socket = socket;
+        try {
+            this.network = new Network(socket.getInputStream(), socket.getOutputStream());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -27,29 +34,22 @@ public class JUpdaterRemoteClient extends Thread {
             JUpdater.log("Client connected : "+socket.getInetAddress().getHostAddress()+":"+socket.getPort());
             accept();
         } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+            System.out.println("["+socket.getInetAddress().getHostAddress()+":"+socket.getPort()+"] Connection closed : "+e.getMessage());
         }
     }
 
-    private DataInputStream dataInputStream = null;
-    private DataOutputStream dataOutputStream = null;
-
     public void accept() throws IOException, ClassNotFoundException {
-        dataInputStream = new DataInputStream(socket.getInputStream());
-        dataOutputStream = new DataOutputStream(socket.getOutputStream());
-
         JUpdater.log("Waiting for the client's version");
-        if(!dataInputStream.readUTF().equalsIgnoreCase(server.getJUpdater().getVersion())){
-            dataOutputStream.writeInt(Network.NEED_UPDATE);
-            dataOutputStream.flush();
+        if(!network.readUTF().equalsIgnoreCase(server.getJUpdater().getVersion())){
+            network.writeInt(Network.NEED_UPDATE);
 
             JUpdater.log("Waiting for the client's manifest file");
-            ManifestObject manifestObject = ManifestObject.fromJson(dataInputStream.readUTF());
+            ManifestObject manifestObject = (ManifestObject) network.readObject(ManifestObject.class);
 
             sendUpdate(manifestObject);
             socket.close();
         } else {
-            dataOutputStream.writeInt(Network.VERSION_OK);
+            network.writeInt(Network.VERSION_OK);
         }
         JUpdater.log("Socket ("+socket.getInetAddress().getHostAddress()+":"+socket.getPort()+") kicked !");
     }
@@ -59,8 +59,8 @@ public class JUpdaterRemoteClient extends Thread {
         ArrayList<String> paths = serverManifest.compare(manifestObject);
 
         JUpdater.log("File recovery, start checking for out-of-date files");
-        dataOutputStream.writeInt(paths.size());
-        dataOutputStream.flush();
+        network.writeInt(paths.size());
+
         JUpdater.log("The client has "+paths.size()+" files to update");
 
         ArrayList<File> files = new ArrayList<>();
@@ -75,8 +75,7 @@ public class JUpdaterRemoteClient extends Thread {
         JUpdater.log("Sending the updated manifest file");
         manifestObject.setVersion(server.getJUpdater().getVersion());
 
-        dataOutputStream.writeUTF(manifestObject.toJson());
-        dataOutputStream.flush();
+        network.writeObject(manifestObject);
         JUpdater.log("Update completed, good bye!");
     }
 
@@ -102,9 +101,8 @@ public class JUpdaterRemoteClient extends Thread {
             long file_length = (long) file.length();
             long length_sended = 0l;
 
-            dataOutputStream.writeUTF(path);
-            dataOutputStream.writeLong(file_length);
-            dataOutputStream.flush();
+            network.writeUTF(path);
+            network.writeLong(file_length);
 
             FileInputStream fileInputStream = new FileInputStream(file);
             OutputStream outputStream = socket.getOutputStream();
@@ -121,18 +119,28 @@ public class JUpdaterRemoteClient extends Thread {
                 }
                 byte[] buffer = new byte[size];
                 int read = 0;
-                if((read = fileInputStream.read(buffer, 0, buffer.length)) < 0){
+                if((read = fileInputStream.read(buffer)) < 0){
                     break;
                 }
-                outputStream.write(buffer, 0, buffer.length);
-                outputStream.flush();
+                outputStream.write(buffer);
                 length_sended+= read;
+                JUpdater.log("Uploading: read="+read+" "+length_sended+"/"+file_length);
 
-                if(finish)
+                if(finish) {
+                    //network.writeInt(Network.FILE_SEND_FINISH);
                     break;
+                }
             }
             fileInputStream.close();
+            outputStream.flush();
             JUpdater.log("finish();");
+
+            JUpdater.log("Waiting for the client to download...");
+            if(network.readInt() == Network.DOWNLOAD_FINISH){
+                JUpdater.log("The client is finally ready to download the next file.");
+            } else {
+                throw new IllegalStateException("The customer cannot continue the download!");
+            }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {

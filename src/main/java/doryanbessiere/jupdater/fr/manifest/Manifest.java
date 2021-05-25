@@ -8,7 +8,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.*;
 import java.util.ArrayList;
 
-public class Manifest {
+public class Manifest implements Serializable {
 
     public static final Gson GSON = new GsonBuilder().create();
 
@@ -237,6 +237,10 @@ public class Manifest {
     }
 
     public static boolean debug = false;
+
+    public static void setDebug(boolean debug) {
+        Manifest.debug = debug;
+    }
 
     public static void debug(String message){
         if(!debug)return;

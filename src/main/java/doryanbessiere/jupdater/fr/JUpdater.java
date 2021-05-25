@@ -11,7 +11,7 @@ public class JUpdater {
         System.out.println("[JUpdater] "+message);
     }
 
-    private int bufferLength = 8;
+    private int bufferLength = 1024*4; // 4 Mb
     private File base;
     private String version;
     private Manifest manifest;

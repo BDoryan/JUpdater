@@ -1,2 +1,3 @@
 # Project exclude paths
-/target/
+/target/classes/
+/target/generated-sources/

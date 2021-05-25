@@ -20,8 +20,7 @@ public class JUpdaterClient {
     }
 
     private Socket socket;
-    private DataInputStream dataInputStream = null;
-    private DataOutputStream dataOutputStream = null;
+    private Network network;
 
     private ArrayList<JUpdaterClientTrafic> traficListeners = new ArrayList<>();
 
@@ -29,27 +28,23 @@ public class JUpdaterClient {
         return traficListeners;
     }
 
-    public void connect(String address, int port){
-        try {
+    public void connect(String address, int port) throws IOException, ClassNotFoundException {
             this.socket = new Socket(address, port);
+            this.network = new Network(this.socket.getInputStream(), this.socket.getOutputStream());
             JUpdater.log("Client connected on "+address+":"+port);
 
-            dataInputStream = new DataInputStream(socket.getInputStream());
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-
             JUpdater.log("Sending the customer's version.");
-            dataOutputStream.writeUTF(jupdater.getVersion());
-            dataOutputStream.flush();
+            network.writeUTF(jupdater.getVersion());
 
             JUpdater.log("Waiting for server response...");
-            if(dataInputStream.readInt() == Network.NEED_UPDATE){
+            int result = network.readInt();
+            if(result == Network.NEED_UPDATE){
                 JUpdater.log("Update required, send your manifest file.");
                 Manifest manifest = jupdater.getManifest();
 
-                dataOutputStream.writeUTF(new ManifestObject(manifest).toJson());
-                dataOutputStream.flush();
+                network.writeObject(new ManifestObject(manifest));
 
-                int count_files = dataInputStream.readInt();
+                int count_files = network.readInt();
                 JUpdater.log("You have "+count_files+" files to update.");
                 traficListeners.forEach(listener -> listener.updateStart(count_files));
 
@@ -57,7 +52,7 @@ public class JUpdaterClient {
                 receiveFiles(count_files);
                 JUpdater.log("Recovery complete, update manifest file");
 
-                ManifestObject manifestObject = ManifestObject.fromJson(dataInputStream.readUTF());
+                ManifestObject manifestObject = (ManifestObject) network.readObject(ManifestObject.class);
 
                 for(ManifestFile manifestFile : manifest.getFiles()){
                     boolean found = false;
@@ -80,21 +75,19 @@ public class JUpdaterClient {
 
                 traficListeners.forEach(listener -> listener.updateFinish());
             } else {
+                traficListeners.forEach(listener -> listener.upToDate());
                 JUpdater.log("You are already up to date! Good bye.");
                 socket.close();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
-    public void receiveFiles(int count_files) throws IOException {
+    public void receiveFiles(int count_files) throws IOException, ClassNotFoundException {
         InputStream inputStream = socket.getInputStream();
         JUpdater.log("Downloading in progress, resolve "+count_files+" files...");
 
         for(int i = 0;i < count_files; i++){
-            String path = dataInputStream.readUTF();
-            long length = dataInputStream.readLong();
+            String path = network.readUTF();
+            long length = network.readLong();
             JUpdater.log("Download start (path="+path+", length="+length+") ("+ (i + 1)+"/"+count_files+")");
 
             File file = new File(jupdater.getBase(), path);
@@ -112,31 +105,26 @@ public class JUpdaterClient {
 
             FileOutputStream fileOutputStream = new FileOutputStream(file);
 
-            int buffer_size = jupdater.getBufferLength();
+            long current = 0l;
+            byte[] fileBuffer = new byte[(int) length];
 
             while(true){
-                int size = buffer_size;
-                boolean finish = false;
-                if(file.length() + buffer_size > length){
-                    size = (int) (length - file.length());
-                    finish = true;
-                }
+                int read = inputStream.read(fileBuffer, (int) current, (int) (fileBuffer.length - current));
+                if(read > 0){
+                    current += read;
+                    long finalCurrent = current;
+                    traficListeners.forEach(listener -> listener.download(file, path, (int) finalCurrent, length, (finalI + 1), count_files));
 
-                byte[] buffer = new byte[size];
-                int read = 0;
-                if((read = inputStream.read(buffer, 0, buffer.length)) < 0){
+                    JUpdater.log("Downloading : read="+read+" "+path+" ("+((long) current)+"/"+(length)+", "+(100 * (long) current / length)+"%)");
+                } else {
                     break;
                 }
-                fileOutputStream.write(buffer, 0, buffer.length);
-                fileOutputStream.flush();
-                traficListeners.forEach(listener -> listener.download(file, path, file.length(), length, (finalI + 1), count_files));
-
-                JUpdater.log("Downloading : "+path+" ("+((long) file.length())+"/"+(length)+", "+(100 * (long) file.length() / length)+"%)");
-                if(finish)
-                    break;
             }
+            fileOutputStream.write(fileBuffer);
+            fileOutputStream.flush();
             traficListeners.forEach(listener -> listener.downloadFinish(file));
             JUpdater.log("Download finish.");
+            network.writeInt(Network.DOWNLOAD_FINISH);
             fileOutputStream.close();
         }
     }

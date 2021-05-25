@@ -5,17 +5,27 @@ import doryanbessiere.jupdater.fr.manifest.Manifest;
 import doryanbessiere.jupdater.fr.server.JUpdaterServer;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 public class Server {
 
     public static void main(String[] args) {
-        String version = "1.0.5";
+        File directory = new File("C:\\Users\\Doryan\\Documents\\Pétanque Manager\\JUpdaterServer\\");
+        File dataFile = new File(directory, "data.properties");
+        Properties data = new Properties();
+        try {
+            data.load(new FileInputStream(dataFile));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        String version = data.get("version")+"";
         Manifest manifest = getManifest(version);
         if(manifest == null)
             return;
 
-        JUpdater jupdater = new JUpdater(new File("C:\\Users\\Doryan\\Documents\\Pétanque Manager\\JUpdaterServer\\base"), version, manifest);
+        JUpdater jupdater = new JUpdater(new File(directory, "base"), version, manifest);
         JUpdaterServer server = new JUpdaterServer(jupdater, 222);
         server.start();
     }

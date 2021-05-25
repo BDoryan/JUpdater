@@ -6,7 +6,7 @@ import doryanbessiere.jupdater.fr.manifest.ManifestFile;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-public class ManifestObject {
+public class ManifestObject implements Serializable {
 
     private String version;
     private ArrayList<ManifestFile> files = new ArrayList<>();
