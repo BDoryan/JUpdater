@@ -75,6 +75,9 @@ public class JUpdaterRemoteClient extends Thread {
         JUpdater.log("Sending the updated manifest file");
         manifestObject.setVersion(server.getJUpdater().getVersion());
 
+        manifestObject.getFiles().clear();
+        manifestObject.getFiles().addAll(serverManifest.getFiles());
+
         network.writeObject(manifestObject);
         JUpdater.log("Update completed, good bye!");
     }
