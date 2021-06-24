@@ -16,10 +16,16 @@ public class JUpdater {
     private String version;
     private Manifest manifest;
 
+    private String[] ignoreFiles;
+
     public JUpdater(File base, String version,Manifest manifest) {
         this.base = base;
         this.version = version;
         this.manifest = manifest;
+    }
+
+    public void setIgnoreFiles(String... ignoreFiles) {
+        this.ignoreFiles = ignoreFiles;
     }
 
     public Manifest getManifest() {
