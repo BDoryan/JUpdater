@@ -1,5 +1,5 @@
 # JUpdater
-Ce projet est une bibliothèque qui à pour but de faire des mises à jour automatique pour des logiciels. Ce projet n'a pas pour but de remplacer la grande blibliothéque **Update4J** mais à juste pour but de simplifier mise en place de mise à jour.
+Ce projet est une bibliothèque qui a pour but de faire des mises à jour automatique pour des logiciels. Ce projet n'a pas pour but de remplacer la grande bibliothèque **Update4J** mais à juste pour but de simplifier la mise en place de mise à jour.
 
 ## *Client*
 Le client se connecte à un serveur de mise à jour, celui-ci s'identifie avec la version du logiciel. Si le serveur trouve que la version n'est pas à jour le client envoie son "manifest" ce qui permet au serveur d'identifier les fichiers à envoyer pour la mise à jour
