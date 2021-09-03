@@ -4,11 +4,12 @@ import doryanbessiere.jupdater.fr.manifest.Manifest;
 import doryanbessiere.jupdater.fr.manifest.ManifestFile;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 
 public class JUpdater {
 
     public static void log(String message){
-        System.out.println("[JUpdater] "+message);
+        System.out.println("["+(new SimpleDateFormat("dd/MM/yyyy HH:mm:ss.SSS").format(System.currentTimeMillis())) +"] [JUpdater] "+message);
     }
 
     private int bufferLength = 1024*4; // 4 Mb
