@@ -2,6 +2,7 @@ package doryanbessiere.jupdater.fr.manifest;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import doryanbessiere.jupdater.fr.manifest.ManifestFile;
 import doryanbessiere.jupdater.fr.serials.ManifestObject;
 import org.apache.commons.io.FileUtils;
 
@@ -38,7 +39,7 @@ public class Manifest implements Serializable {
 
     public boolean initFiles(File base, File directory, String version){
         this.version = version;
-        for(File file : directory.listFiles()){
+        for(File file : directory.listFiles(filter)){
             if(file.isDirectory()){
                 initFiles(base, file, version);
             } else {
@@ -132,9 +133,16 @@ public class Manifest implements Serializable {
         return true;
     }
 
+    private FileFilter filter = new FileFilter() {
+        @Override
+        public boolean accept(File pathname) {
+            return !pathname.getName().equals("manifest.json");
+        }
+    };
+
     private ArrayList<File> scanFiles(File directory){
         ArrayList<File> files = new ArrayList<>();
-        for(File file : directory.listFiles()){
+        for(File file : directory.listFiles(filter)){
             if(file.isDirectory())
                 files.addAll(scanFiles(file));
             else
