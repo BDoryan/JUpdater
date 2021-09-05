@@ -57,13 +57,13 @@ public class Manifest implements Serializable {
      * - Application du nouveau fichier manifest
      * - Lancement de la nouvelle copie dans le dossier 'base'
      *
-     * @param base_directory set the base directory (old version directory)
-     * @param new_base_directory set the new directory (new version directory)
+     * @param latest_directory set the base directory (old version directory)
+     * @param updated_directory set the new directory (new version directory)
      * @param new_version set the new version
      * @return true=success, false=error
      */
-    public boolean updateFiles(File backup_directory, File base_directory, File new_base_directory, String new_version){
-        if(!(base_directory.exists() && base_directory.isDirectory() && new_base_directory.exists() && new_base_directory.isDirectory())){
+    public boolean updateFiles(File backup_directory, File latest_directory, File updated_directory, String new_version){
+        if(!(latest_directory.exists() && latest_directory.isDirectory() && updated_directory.exists() && updated_directory.isDirectory())){
             error("File not existing or else they are not back");
             return false;
         }
@@ -76,8 +76,8 @@ public class Manifest implements Serializable {
         for(ManifestFile manifestFile : manifestFiles){
             String path = manifestFile.getPath();
 
-            File oldFile = new File(base_directory, path);
-            File newFile = new File(new_base_directory, path);
+            File oldFile = new File(latest_directory, path);
+            File newFile = new File(updated_directory, path);
             if(newFile.exists()){
                 try {
                     if(FileUtils.contentEquals(oldFile, newFile)){
@@ -96,9 +96,9 @@ public class Manifest implements Serializable {
             }
         }
 
-        for(File file : scanFiles(new_base_directory)){
-            String path = file.getPath().replace(new_base_directory.getPath(), "");
-            File oldFile = new File(base_directory, path);
+        for(File file : scanFiles(updated_directory)){
+            String path = file.getPath().replace(updated_directory.getPath(), "");
+            File oldFile = new File(latest_directory, path);
 
             if(!oldFile.exists()){
                 files.add(new ManifestFile(path, new_version));
@@ -117,13 +117,13 @@ public class Manifest implements Serializable {
                 }
                 backup.mkdirs();
 
-                FileUtils.copyDirectory(base_directory, backup);
+                FileUtils.copyDirectory(latest_directory, backup);
                 debug("Setting up the backup of the old version...");
             }
-            FileUtils.cleanDirectory(base_directory);
+            FileUtils.cleanDirectory(latest_directory);
             debug("Removal of the old version.");
-            FileUtils.copyDirectory(new_base_directory, base_directory);
-            FileUtils.cleanDirectory(new_base_directory);
+            FileUtils.copyDirectory(updated_directory, latest_directory);
+            FileUtils.cleanDirectory(updated_directory);
             debug("Copy of the new version.");
 
             this.version = version;
