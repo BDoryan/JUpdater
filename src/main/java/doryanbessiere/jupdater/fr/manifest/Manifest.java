@@ -27,6 +27,12 @@ public class Manifest implements Serializable {
             if(!file.delete())
                 return false;
         }
+
+        File parent = file.getParentFile();
+        if(!parent.exists()){
+            parent.mkdirs();
+        }
+
         file.createNewFile();
 
         FileWriter fileWriter = new FileWriter(file);
