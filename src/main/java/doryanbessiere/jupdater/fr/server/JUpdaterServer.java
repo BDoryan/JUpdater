@@ -28,7 +28,6 @@ public class JUpdaterServer {
                 Socket socket = serverSocket.accept();
                 JUpdaterRemoteClient remoteClient = new JUpdaterRemoteClient(this, socket);
                 remoteClient.start();
-
             }
         } catch (IOException e) {
             e.printStackTrace();

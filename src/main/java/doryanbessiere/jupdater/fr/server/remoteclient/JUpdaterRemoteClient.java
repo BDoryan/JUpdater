@@ -41,6 +41,7 @@ public class JUpdaterRemoteClient extends Thread {
     public void accept() throws IOException, ClassNotFoundException {
         JUpdater.log("Waiting for the client's version");
         if(!network.readUTF().equalsIgnoreCase(server.getJUpdater().getVersion())){
+            server.getJUpdater().getListeners().forEach(listener -> listener.connection(this, server.getJUpdater().getVersion()));
             network.writeInt(Network.NEED_UPDATE);
 
             JUpdater.log("Waiting for the client's manifest file");
@@ -49,12 +50,14 @@ public class JUpdaterRemoteClient extends Thread {
             sendUpdate(manifestObject);
             socket.close();
         } else {
+            server.getJUpdater().getListeners().forEach(listener -> listener.connection(this, server.getJUpdater().getVersion()));
             network.writeInt(Network.VERSION_OK);
         }
         JUpdater.log("Socket ("+socket.getInetAddress().getHostAddress()+":"+socket.getPort()+") kicked !");
     }
 
     public void sendUpdate(ManifestObject manifestObject) throws IOException {
+        server.getJUpdater().getListeners().forEach(listener -> listener.update(this, server.getJUpdater().getVersion()));
         Manifest serverManifest = server.getJUpdater().getManifest();
         ArrayList<String> paths = serverManifest.compare(manifestObject);
 

@@ -1,10 +1,12 @@
 package doryanbessiere.jupdater.fr;
 
+import doryanbessiere.jupdater.fr.listeners.JUpdaterListener;
 import doryanbessiere.jupdater.fr.manifest.Manifest;
 import doryanbessiere.jupdater.fr.manifest.ManifestFile;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 
 public class JUpdater {
 
@@ -16,6 +18,7 @@ public class JUpdater {
     private File base;
     private String version;
     private Manifest manifest;
+    private ArrayList<JUpdaterListener> listeners = new ArrayList<>();
 
     private String[] ignoreFiles;
 
@@ -55,6 +58,10 @@ public class JUpdater {
             }
         }
         return count;
+    }
+
+    public ArrayList<JUpdaterListener> getListeners() {
+        return listeners;
     }
 
     public File getBase() {
